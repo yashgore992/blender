@@ -1,4 +1,4 @@
-name: Blender Android Build
+name: Blender Android APK Build
 
 on:
   push:
@@ -29,10 +29,10 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    - name: 🧰 Install Ubuntu Dependencies
+    - name: 🧰 Install Dependencies
       run: |
         sudo apt update
-        sudo apt install -y wget unzip ninja-build yasm build-essential libglu1-mesa openjdk-17-jdk
+        sudo apt install -y wget unzip ninja-build yasm build-essential libglu1-mesa openjdk-17-jdk python3-dev
 
     - name: 📦 Setup Android SDK + NDK
       run: |
@@ -42,8 +42,7 @@ jobs:
         unzip tools.zip -d cmdline-tools
         mv cmdline-tools/cmdline-tools cmdline-tools/latest
 
-        echo "export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH" >> $GITHUB_ENV
-
+        echo "export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH" >> $GITHUB_ENV
         yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses
         $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT \
           "platform-tools" \
@@ -57,29 +56,24 @@ jobs:
         echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/${ANDROID_NDK_VERSION}" >> $GITHUB_ENV
         echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
 
-    - name: 🔁 Clone Blender Source + Submodules
+    - name: 🧱 Clone Submodules
       run: |
-        git clone https://projects.blender.org/blender/blender.git
-        cd blender
         git submodule update --init --recursive
 
-    - name: ⚙️ Update Blender Dependencies
+    - name: 📦 Install Blender Android Deps
       run: |
-        cd blender
-        make update
-
-    - name: 📱 Build Blender Android APK using make.py
-      run: |
-        cd blender
         python3 ./build_files/build_environment/install_deps.py --android
+
+    - name: 🔨 Build Blender Android APK
+      run: |
         python3 ./build_files/utils/make_project.py \
           --android \
           --arch arm64-v8a \
           --sdk-dir $ANDROID_SDK_ROOT \
           --ndk-dir $ANDROID_SDK_ROOT/ndk/${ANDROID_NDK_VERSION}
 
-    - name: 📤 Upload APK Artifact
+    - name: 📤 Upload Blender APK
       uses: actions/upload-artifact@v4
       with:
         name: blender-android-apk
-        path: blender/build_android_full/install/blender.apk
+        path: build_android_arm64_v8a/install/blender.apk
