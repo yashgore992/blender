@@ -1,23 +1,21 @@
-name: Build Blender Android APK
+
+name: Build Blender Android
 
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
 
 jobs:
-  build-android:
+  build:
     runs-on: ubuntu-22.04
-
     env:
-      PYTHON_VERSION: "3.11"
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
       ANDROID_NDK_VERSION: "25.2.9519653"
       ANDROID_API_LEVEL: "30"
+      PYTHON_VERSION: "3.11"
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -25,29 +23,25 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Dependencies
+      - name: Install Required Packages
         run: |
           sudo apt update
-          sudo apt install -y git cmake ninja-build pkg-config \
-            libxi-dev libxxf86vm-dev libxfixes-dev libxrender-dev \
-            libxrandr-dev libxcursor-dev libegl1-mesa-dev \
-            libgl1-mesa-dev libgles2-mesa-dev libdbus-1-dev \
-            libwayland-dev libxkbcommon-dev libx11-xcb-dev \
-            libxcomposite-dev libxdamage-dev libxinerama-dev \
-            libudev-dev libssl-dev libjpeg-dev yasm unzip openjdk-17-jdk
+          sudo apt install -y openjdk-17-jdk unzip wget ninja-build yasm libglu1-mesa
 
-      - name: Download Android SDK & NDK
+      - name: Download Android SDK
         run: |
           mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
           cd $ANDROID_SDK_ROOT
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip commandlinetools-linux-*.zip -d cmdline-tools
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O tools.zip
+          unzip tools.zip -d cmdline-tools
           mv cmdline-tools cmdline-tools/latest
           yes | cmdline-tools/latest/bin/sdkmanager --sdk_root=${ANDROID_SDK_ROOT} \
-            "platform-tools" "platforms;android-${ANDROID_API_LEVEL}" \
-            "build-tools;30.0.3" "ndk;${ANDROID_NDK_VERSION}"
+            "platform-tools" \
+            "build-tools;30.0.3" \
+            "platforms;android-${ANDROID_API_LEVEL}" \
+            "ndk;${ANDROID_NDK_VERSION}"
 
-      - name: Set Environment Paths
+      - name: Set environment
         run: |
           echo "ANDROID_HOME=${ANDROID_SDK_ROOT}" >> $GITHUB_ENV
           echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}" >> $GITHUB_ENV
@@ -64,12 +58,12 @@ jobs:
           cd blender
           make update
 
-      - name: Build Blender for Android
+      - name: Build Blender Android
         run: |
           cd blender
           make Android
 
-      - name: Upload Blender APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: blender-android-apk
