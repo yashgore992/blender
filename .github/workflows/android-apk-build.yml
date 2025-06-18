@@ -17,6 +17,8 @@ jobs:
     steps:
     - name: 📥 Checkout Blender Source
       uses: actions/checkout@v4
+      with:
+        submodules: true
 
     - name: 🐍 Setup Python
       uses: actions/setup-python@v4
@@ -29,10 +31,28 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    - name: 🧰 Install Dependencies
+    - name: 🧰 Install Linux Dependencies (Manual)
       run: |
         sudo apt update
-        sudo apt install -y wget unzip ninja-build yasm build-essential libglu1-mesa openjdk-17-jdk python3-dev
+        sudo apt install -y \
+          build-essential \
+          cmake \
+          git \
+          wget \
+          ninja-build \
+          libxi-dev \
+          libxcursor-dev \
+          libxrandr-dev \
+          libxinerama-dev \
+          libglu1-mesa-dev \
+          libglew-dev \
+          libopenal-dev \
+          libssl-dev \
+          libpulse-dev \
+          yasm \
+          unzip \
+          libxfixes-dev \
+          libxrender-dev
 
     - name: 📦 Setup Android SDK + NDK
       run: |
@@ -42,7 +62,7 @@ jobs:
         unzip tools.zip -d cmdline-tools
         mv cmdline-tools/cmdline-tools cmdline-tools/latest
 
-        echo "export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH" >> $GITHUB_ENV
+        echo "PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH" >> $GITHUB_ENV
         yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses
         $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT \
           "platform-tools" \
@@ -56,15 +76,7 @@ jobs:
         echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/${ANDROID_NDK_VERSION}" >> $GITHUB_ENV
         echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
 
-    - name: 🧱 Clone Submodules
-      run: |
-        git submodule update --init --recursive
-
-    - name: 📦 Install Blender Android Deps
-      run: |
-        python3 ./build_files/build_environment/install_deps.py --android
-
-    - name: 🔨 Build Blender Android APK
+    - name: 🔨 Build Blender for Android
       run: |
         python3 ./build_files/utils/make_project.py \
           --android \
