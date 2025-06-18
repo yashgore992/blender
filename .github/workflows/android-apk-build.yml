@@ -1,4 +1,4 @@
-name: Build Blender Android App
+name: Build Blender Android APK
 
 on:
   push:
@@ -8,12 +8,12 @@ on:
 
 jobs:
   build-android:
-    name: Build Blender for Android
     runs-on: ubuntu-22.04
 
     env:
       PYTHON_VERSION: "3.11"
-      ANDROID_NDK_VERSION: "r25c"
+      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+      ANDROID_NDK_VERSION: "25.2.9519653"
       ANDROID_API_LEVEL: "30"
 
     steps:
@@ -34,7 +34,24 @@ jobs:
             libgl1-mesa-dev libgles2-mesa-dev libdbus-1-dev \
             libwayland-dev libxkbcommon-dev libx11-xcb-dev \
             libxcomposite-dev libxdamage-dev libxinerama-dev \
-            libudev-dev libssl-dev libjpeg-dev yasm
+            libudev-dev libssl-dev libjpeg-dev yasm unzip openjdk-17-jdk
+
+      - name: Download Android SDK & NDK
+        run: |
+          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+          cd $ANDROID_SDK_ROOT
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          unzip commandlinetools-linux-*.zip -d cmdline-tools
+          mv cmdline-tools cmdline-tools/latest
+          yes | cmdline-tools/latest/bin/sdkmanager --sdk_root=${ANDROID_SDK_ROOT} \
+            "platform-tools" "platforms;android-${ANDROID_API_LEVEL}" \
+            "build-tools;30.0.3" "ndk;${ANDROID_NDK_VERSION}"
+
+      - name: Set Environment Paths
+        run: |
+          echo "ANDROID_HOME=${ANDROID_SDK_ROOT}" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}" >> $GITHUB_ENV
+          echo "${ANDROID_SDK_ROOT}/platform-tools" >> $GITHUB_PATH
 
       - name: Clone Blender Source
         run: |
@@ -42,25 +59,17 @@ jobs:
           cd blender
           git submodule update --init --recursive
 
-      - name: Download Android Dependencies
+      - name: Download Blender Dependencies
         run: |
           cd blender
           make update
-          make Android
-
-      - name: Setup Android SDK & NDK
-        uses: android-actions/setup-android@v3
-        with:
-          ndk-version: ${{ env.ANDROID_NDK_VERSION }}
-          api-level: ${{ env.ANDROID_API_LEVEL }}
 
       - name: Build Blender for Android
         run: |
           cd blender
           make Android
 
-      - name: Archive APK
-        if: success()
+      - name: Upload Blender APK
         uses: actions/upload-artifact@v4
         with:
           name: blender-android-apk
